@@ -1,0 +1,32 @@
+diff --git a/node_modules/whisper.rn/package.json b/node_modules/whisper.rn/package.json
+index c4ffe61..555e5c3 100644
+--- a/node_modules/whisper.rn/package.json
++++ b/node_modules/whisper.rn/package.json
+@@ -8,6 +8,13 @@
+   "react-native": "src/index",
+   "source": "src/index",
+   "exports": {
++    ".": {
++      "react-native": "./src/index.ts",
++      "types": "./lib/typescript/index.d.ts",
++      "import": "./lib/module/index.js",
++      "require": "./lib/commonjs/index.js"
++    },
++    "./package.json": "./package.json",
+     "./*": {
+       "react-native": "./src/*.ts",
+       "types": "./lib/typescript/*.d.ts",
+diff --git a/node_modules/whisper.rn/whisper-rn.podspec b/node_modules/whisper.rn/whisper-rn.podspec
+index e24aa83..8d6cc03 100644
+--- a/node_modules/whisper.rn/whisper-rn.podspec
++++ b/node_modules/whisper.rn/whisper-rn.podspec
+@@ -51,7 +51,8 @@ Pod::Spec.new do |s|
+       ss.source_files = "cpp/ggml-metal/*.m"
+     end
+   else
+-    s.source_files = "ios/**/*.{h,m,mm}", "cpp/jsi/*.{h,cpp}"
++    # Non-recursive glob so headers inside the vendored xcframework slices are not copied (duplicates under use_frameworks!)
++    s.source_files = "ios/*.{h,m,mm}", "cpp/jsi/*.{h,cpp}"
+     s.vendored_frameworks = "ios/rnwhisper.xcframework"
+   end
+ 

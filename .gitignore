@@ -1,0 +1,46 @@
+# IDE
+*.sublime-project
+*.sublime-workspace
+*.vscode
+*.fleet
+
+# node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# build
+dist/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# dotenv environment variable files
+.env
+.env.development.local
+.env.test.local
+.env.production.local
+.env.local
+
+# Bundle artifact
+*.jsbundle
+
+# CocoaPods
+/ios/Pods/
+
+# Unit Test Coverage
+coverage/
+
+# OSX
+.DS_Store
+.idea

@@ -1,0 +1,67 @@
+{
+  "name": "@earthranger/react-native-audio-form-fill",
+  "version": "0.1.0",
+  "description": "Offline, on-device dictation that fills JSON Schema forms using Whisper and llama.cpp",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "react-native": "./src/index.ts",
+  "source": "./src/index.ts",
+  "scripts": {
+    "preinstall": "git config core.hooksPath .githooks",
+    "prepare": "npm run build",
+    "build": "npm run clean && tsc -p tsconfig.build.json",
+    "clean": "rm -rf dist",
+    "lint": "eslint src/ test/ --ext .js,.jsx,.ts,.tsx",
+    "test": "jest --coverage",
+    "typecheck": "tsc --noEmit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PADAS/react-native-audio-form-fill.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "keywords": [
+    "react-native",
+    "json-schema",
+    "forms",
+    "dictation",
+    "speech-to-text",
+    "whisper",
+    "llama.cpp",
+    "on-device",
+    "offline",
+    "earthranger"
+  ],
+  "author": "EarthRanger",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/PADAS/react-native-audio-form-fill/issues"
+  },
+  "homepage": "https://github.com/PADAS/react-native-audio-form-fill#readme",
+  "jest": {
+    "testMatch": [
+      "<rootDir>/test/**/*.test.ts"
+    ],
+    "collectCoverageFrom": [
+      "src/**/*.ts"
+    ]
+  },
+  "devDependencies": {
+    "@babel/core": "^7.26.0",
+    "@babel/preset-env": "^7.26.0",
+    "@babel/preset-typescript": "^7.26.0",
+    "@types/jest": "^29.5.14",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
+    "babel-jest": "^29.7.0",
+    "eslint": "^8.57.1",
+    "jest": "^29.7.0",
+    "typescript": "^5.6.3"
+  }
+}

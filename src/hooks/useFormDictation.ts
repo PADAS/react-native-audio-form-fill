@@ -12,17 +12,11 @@ import { extractFormValues, transcribeAudio } from '../engine';
 import {
   hasRecordingPermission, startDictationRecording, stopDictationRecording, stopRecordingIfActive,
 } from '../recording/recorder';
-import { DictationLogger, DictationStatus, UseFormDictationOptions } from './types';
+import { DictationStatus, UseFormDictationOptions } from './types';
+import { NOOP_LOGGER } from './logger';
 
 // Constants
 const BYTES_PER_MB = 1024 * 1024;
-
-const NOOP_LOGGER: DictationLogger = {
-  debug: () => undefined,
-  info: () => undefined,
-  warn: () => undefined,
-  error: () => undefined,
-};
 
 export const useFormDictation = ({
   jsonSchema,

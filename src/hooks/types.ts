@@ -1,4 +1,5 @@
 import { LocalModel } from '../models';
+import { AudioFormFillStorage } from './storage';
 
 export type DictationStatus = 'idle' | 'recording' | 'transcribing' | 'extracting';
 
@@ -23,4 +24,12 @@ export interface UseFormDictationOptions {
   logger?: DictationLogger;
   // Bytes of memory used by the app, added to the metrics log when provided (e.g. react-native-device-info)
   getUsedMemory?: () => Promise<number>;
+}
+
+export interface UseLocalModelsOptions {
+  // Where the selected models and translate preference are saved; keep the same object across renders
+  storage: AudioFormFillStorage;
+  // Models to choose from; defaults to the built-in LOCAL_MODELS
+  models?: LocalModel[];
+  logger?: DictationLogger;
 }

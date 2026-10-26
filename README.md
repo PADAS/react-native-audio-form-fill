@@ -133,6 +133,50 @@ const { status, fieldCount, toggleRecording } = useFormDictation({
 });
 ```
 
+## Model settings hook
+
+`useLocalModels({ storage, models?, logger? })` manages which speech and form fill models are selected, whether
+speech is translated to English (default on), and model downloads. Selections are saved through an
+`AudioFormFillStorage` you provide, under `AUDIO_FORM_FILL_STORAGE_KEYS`.
+
+```ts
+interface AudioFormFillStorage {
+  getString: (key: string) => string | undefined;
+  getBoolean: (key: string) => boolean | undefined;
+  set: (key: string, value: string | boolean) => void;
+  // Optional: report changes so every screen using the hook stays in sync. Returns an unsubscribe function.
+  subscribe?: (onChange: (key: string) => void) => () => void;
+}
+```
+
+Create the storage once (e.g. at module level), not inside a component. With MMKV:
+
+```ts
+import { MMKV } from 'react-native-mmkv';
+import { AudioFormFillStorage, useLocalModels } from '@earthranger/react-native-audio-form-fill';
+
+const mmkv = new MMKV();
+
+export const audioFormFillStorage: AudioFormFillStorage = {
+  getString: (key) => mmkv.getString(key),
+  getBoolean: (key) => mmkv.getBoolean(key),
+  set: (key, value) => mmkv.set(key, value),
+  subscribe: (onChange) => {
+    const listener = mmkv.addOnValueChangedListener(onChange);
+    return () => listener.remove();
+  },
+};
+
+const {
+  speechModel, languageModel, areModelsReady, shouldTranslateToEnglish,
+  speechModels, languageModels, downloadedModelIds, downloadProgress, downloadError,
+  onSelectModel, onDownloadModel, setShouldTranslateToEnglish, refreshDownloadedModels,
+} = useLocalModels({ storage: audioFormFillStorage });
+```
+
+Downloaded models are checked when the hook mounts. Call `refreshDownloadedModels` when a screen regains focus
+(e.g. from React Navigation's `useFocusEffect`) to pick up downloads made on another screen.
+
 ## Development
 
 ```sh

@@ -7,12 +7,17 @@ offline after a one-time model download.
 ## Install
 
 ```sh
-yarn add @earthranger/react-native-audio-form-fill react-native-fs whisper.rn@^0.7.4 llama.rn@^0.12.9
+yarn add @earthranger/react-native-audio-form-fill react-native-fs react-native-audio-api@^0.13.0 \
+  whisper.rn@^0.7.4 llama.rn@^0.12.9
 cd ios && pod install
 ```
 
-Peer dependencies: `react-native-fs` downloads and stores models, `whisper.rn` (whisper.cpp) transcribes speech
-and `llama.rn` (llama.cpp) fills the form. The React Native New Architecture is required by both native libraries.
+Peer dependencies: `react-native-fs` downloads and stores models, `react-native-audio-api` records speech,
+`whisper.rn` (whisper.cpp) transcribes it and `llama.rn` (llama.cpp) fills the form. The React Native New
+Architecture is required by both native model libraries.
+
+Recording needs microphone permission: `NSMicrophoneUsageDescription` in the iOS `Info.plist`, and
+`android.permission.RECORD_AUDIO` in the Android manifest. The hook asks for permission the first time it records.
 
 ### whisper.rn 0.7.4 patch
 
@@ -95,6 +100,37 @@ import { extractFormValues, getDictationFields, transcribeAudio } from '@earthra
 const { transcript } = await transcribeAudio(speechModel, wavPath, true);
 const { values, rejected } = await extractFormValues(languageModel, getDictationFields(jsonSchema).fields,
   transcript, formData);
+```
+
+## Dictation hook
+
+`useFormDictation(options)` drives a dictation button: one tap starts recording, the next stops it, transcribes,
+fills the form and calls `onFilled` with the checked values. It records a 16 kHz mono WAV file and deletes it
+afterwards.
+
+| Option | |
+|---|---|
+| `jsonSchema` | The form's JSON Schema, as passed to the form renderer. |
+| `currentValues` | The form's current data, sent to the model as context. Read when dictation finishes, so values typed meanwhile are included. |
+| `onFilled(values)` | Called when at least one field was filled. Merge `values` into the form data. |
+| `speechModel`, `languageModel` | Downloaded models to use (see [Models](#models)). |
+| `shouldTranslateToEnglish` | Translate speech to English before filling, for forms whose options are in English. |
+| `logger` | Optional `{ debug, info, warn, error }`. Receives status changes, the field summary, transcript, filled and rejected values, the raw model output and a metrics line. |
+| `getUsedMemory` | Optional `() => Promise<bytes>` (e.g. `DeviceInfo.getUsedMemory`), added to the metrics line. |
+
+Returns `status` (`'idle' | 'recording' | 'transcribing' | 'extracting'`), `fieldCount` (hide the button when it's
+0) and `toggleRecording`.
+
+```tsx
+const { status, fieldCount, toggleRecording } = useFormDictation({
+  jsonSchema,
+  currentValues: formData,
+  onFilled: (values) => setFormData((data) => ({ ...data, ...values })),
+  speechModel,
+  languageModel,
+  shouldTranslateToEnglish: true,
+  logger: console,
+});
 ```
 
 ## Development

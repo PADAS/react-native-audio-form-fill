@@ -44,3 +44,6 @@ coverage/
 # OSX
 .DS_Store
 .idea
+
+# npm pack output
+*.tgz

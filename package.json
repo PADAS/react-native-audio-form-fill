@@ -54,11 +54,14 @@
     "moduleNameMapper": {
       "^react-native-fs$": "<rootDir>/test/mocks/reactNativeFs.ts",
       "^whisper\\.rn$": "<rootDir>/test/mocks/whisperRn.ts",
-      "^llama\\.rn$": "<rootDir>/test/mocks/llamaRn.ts"
+      "^llama\\.rn$": "<rootDir>/test/mocks/llamaRn.ts",
+      "^react-native-audio-api$": "<rootDir>/test/mocks/reactNativeAudioApi.ts"
     }
   },
   "peerDependencies": {
     "llama.rn": "^0.12.9",
+    "react": ">=18",
+    "react-native-audio-api": "^0.13.0",
     "react-native-fs": ">=2.18.0",
     "whisper.rn": "^0.7.4"
   },
@@ -66,15 +69,22 @@
     "@babel/core": "^7.26.0",
     "@babel/preset-env": "^7.26.0",
     "@babel/preset-typescript": "^7.26.0",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.0",
     "@types/jest": "^29.5.14",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
     "babel-jest": "^29.7.0",
     "eslint": "^8.57.1",
     "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
     "llama.rn": "^0.12.9",
     "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "react-native": "^0.79.6",
+    "react-native-audio-api": "^0.13.0",
     "react-native-fs": "^2.20.0",
     "typescript": "^5.6.3",
     "whisper.rn": "^0.7.4"

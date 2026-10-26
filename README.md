@@ -7,10 +7,12 @@ offline after a one-time model download.
 ## Install
 
 ```sh
-yarn add @earthranger/react-native-audio-form-fill
+yarn add @earthranger/react-native-audio-form-fill react-native-fs
 ```
 
-## What's in this release
+`react-native-fs` is a peer dependency used to download and store models.
+
+## Extraction
 
 Pure TypeScript with no native dependencies:
 
@@ -41,6 +43,25 @@ const schema = buildExtractionSchema(fields);
 
 // Run any chat model with `messages`, constraining its output to `schema`, then:
 const { values, rejected } = coerceExtractedValues(fields, parseExtractionOutput(modelOutput));
+```
+
+## Models
+
+| Export | Purpose |
+|---|---|
+| `LOCAL_MODELS` | Built-in registry: Whisper base and small (speech), Qwen2.5 1.5B Instruct and Qwen3 1.7B (form filling), downloaded from Hugging Face. |
+| `getModelsForType(type, models?)` | Models of type `'speech'` or `'language'`. Pass your own list to use different models. |
+| `getModelForType(type, id, models?)` | The model with a saved id, falling back to the first model of that type. |
+| `downloadModel(model, onProgress)` | Downloads to `<Documents>/local-ai-models`. Writes to a `.partial` file and only moves it into place after a 200 response, so an interrupted download never looks complete. |
+| `isModelDownloaded(model)`, `getModelPath(model)`, `deleteModel(model)` | Locate and remove downloaded files. |
+
+```ts
+import { downloadModel, getModelForType, isModelDownloaded } from '@earthranger/react-native-audio-form-fill';
+
+const speechModel = getModelForType('speech', savedSpeechModelId);
+if (!(await isModelDownloaded(speechModel))) {
+  await downloadModel(speechModel, (fraction) => setProgress(fraction));
+}
 ```
 
 ## Development

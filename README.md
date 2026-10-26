@@ -7,10 +7,23 @@ offline after a one-time model download.
 ## Install
 
 ```sh
-yarn add @earthranger/react-native-audio-form-fill react-native-fs
+yarn add @earthranger/react-native-audio-form-fill react-native-fs whisper.rn@^0.7.4 llama.rn@^0.12.9
+cd ios && pod install
 ```
 
-`react-native-fs` is a peer dependency used to download and store models.
+Peer dependencies: `react-native-fs` downloads and stores models, `whisper.rn` (whisper.cpp) transcribes speech
+and `llama.rn` (llama.cpp) fills the form. The React Native New Architecture is required by both native libraries.
+
+### whisper.rn 0.7.4 patch
+
+whisper.rn 0.7.4 needs a patch until it is fixed upstream. Copy
+[`docs/patches/whisper.rn+0.7.4.patch`](docs/patches/whisper.rn+0.7.4.patch) into your app's `patches/` folder
+and apply it with [patch-package](https://github.com/ds300/patch-package). It fixes two problems:
+
+- Its `package.json` `exports` map has no `"."` or `"./package.json"` entry, so React Native codegen silently
+  skips the library (iOS fails with `RNWhisperSpec/RNWhisperSpec.h` not found) and Jest/Node cannot resolve it.
+- Its podspec copies headers from every slice of the prebuilt xcframework, which collide under
+  `use_frameworks! :linkage => :static` ("Multiple commands produce …/Headers/*.h").
 
 ## Extraction
 
@@ -62,6 +75,26 @@ const speechModel = getModelForType('speech', savedSpeechModelId);
 if (!(await isModelDownloaded(speechModel))) {
   await downloadModel(speechModel, (fraction) => setProgress(fraction));
 }
+```
+
+## Engine
+
+| Export | Purpose |
+|---|---|
+| `transcribeAudio(model, audioPath, shouldTranslateToEnglish)` | Transcribes a WAV file with Whisper (language auto-detected; optionally translated to English). Returns the trimmed `transcript`, detected `language` and timings. |
+| `extractFormValues(model, fields, transcript, currentValues)` | Fills `fields` from the transcript with a llama.cpp model whose output is constrained to `buildExtractionSchema(fields)`, then checks it with `coerceExtractedValues`. Returns `values`, `rejected`, the model's `rawOutput`, and load, generation and token timings. |
+| `releaseDictationModels()` | Frees the loaded models. |
+
+One speech model and one language model stay loaded between calls, because loading a 1 GB model takes several
+seconds; selecting a different model releases the previous one. The language model runs with every layer offloaded
+to the GPU (Metal on iOS) where llama.cpp supports it, and on the CPU otherwise.
+
+```ts
+import { extractFormValues, getDictationFields, transcribeAudio } from '@earthranger/react-native-audio-form-fill';
+
+const { transcript } = await transcribeAudio(speechModel, wavPath, true);
+const { values, rejected } = await extractFormValues(languageModel, getDictationFields(jsonSchema).fields,
+  transcript, formData);
 ```
 
 ## Development

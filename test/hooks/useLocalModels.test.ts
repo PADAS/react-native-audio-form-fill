@@ -163,6 +163,44 @@ describe('useLocalModels', () => {
     expect(logger.info).toHaveBeenCalledWith('Downloaded whisper-base-q5_1');
   });
 
+  it('shows a download started on a screen that has since closed, and picks up the model when it finishes', async () => {
+    const { storage } = createMemoryStorage();
+    let finishDownload: () => void = () => undefined;
+    mockFs.downloadFile.mockImplementation((options) => {
+      options.progress?.({ jobId: 1, bytesWritten: 40, contentLength: 100 });
+      return {
+        jobId: 1,
+        promise: new Promise((resolve) => {
+          finishDownload = () => resolve({ jobId: 1, statusCode: 200, bytesWritten: 100 });
+        }),
+      };
+    });
+    const firstVisit = await renderLocalModels({ storage });
+    let download: Promise<void> = Promise.resolve();
+    act(() => {
+      download = firstVisit.result.current.onDownloadModel(BASE_SPEECH);
+    });
+    await waitFor(() => expect(firstVisit.result.current.downloadProgress).toEqual({ 'whisper-base-q5_1': 0.4 }));
+    firstVisit.unmount();
+
+    const secondVisit = await renderLocalModels({ storage });
+    expect(secondVisit.result.current.downloadProgress).toEqual({ 'whisper-base-q5_1': 0.4 });
+
+    let secondDownload: Promise<void> = Promise.resolve();
+    act(() => {
+      secondDownload = secondVisit.result.current.onDownloadModel(BASE_SPEECH);
+    });
+    mockDownloadedFiles([BASE_SPEECH.fileName]);
+    await act(async () => {
+      finishDownload();
+      await Promise.all([download, secondDownload]);
+    });
+
+    expect(mockFs.downloadFile).toHaveBeenCalledTimes(1);
+    expect(secondVisit.result.current.downloadProgress).toEqual({});
+    expect(secondVisit.result.current.downloadedModelIds).toEqual(['whisper-base-q5_1']);
+  });
+
   it('reports a failed download', async () => {
     const logger = createLogger();
     const { storage } = createMemoryStorage();
@@ -177,6 +215,34 @@ describe('useLocalModels', () => {
     expect(result.current.downloadError).toBe('Model download failed for whisper-base-q5_1 with status 503');
     expect(result.current.downloadProgress).toEqual({});
     expect(logger.error).toHaveBeenCalledWith('Model download failed', expect.any(Error));
+  });
+
+  it('deletes a downloaded model and logs it', async () => {
+    const logger = createLogger();
+    mockDownloadedFiles([BASE_SPEECH.fileName]);
+    const { storage } = createMemoryStorage();
+    const { result } = await renderLocalModels({ storage, logger });
+    await waitFor(() => expect(result.current.downloadedModelIds).toEqual(['whisper-base-q5_1']));
+
+    mockFs.unlink.mockImplementation(async () => mockDownloadedFiles([]));
+    await act(async () => { await result.current.onDeleteModel(BASE_SPEECH); });
+
+    expect(mockFs.unlink).toHaveBeenCalledWith(expect.stringMatching(new RegExp(`/${BASE_SPEECH.fileName}$`)));
+    expect(result.current.downloadedModelIds).toEqual([]);
+    expect(logger.info).toHaveBeenCalledWith('Deleted whisper-base-q5_1');
+  });
+
+  it('logs a failed delete', async () => {
+    const logger = createLogger();
+    mockDownloadedFiles([BASE_SPEECH.fileName]);
+    mockFs.unlink.mockRejectedValue(new Error('Permission denied'));
+    const { storage } = createMemoryStorage();
+    const { result } = await renderLocalModels({ storage, logger });
+
+    await act(async () => { await result.current.onDeleteModel(BASE_SPEECH); });
+
+    expect(logger.error).toHaveBeenCalledWith('Model delete failed', expect.any(Error));
+    expect(result.current.downloadedModelIds).toEqual(['whisper-base-q5_1']);
   });
 
   it('offers an app-provided model list', async () => {

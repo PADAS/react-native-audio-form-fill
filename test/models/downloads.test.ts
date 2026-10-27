@@ -1,7 +1,7 @@
 import RNFS from 'react-native-fs';
 
 import {
-  deleteModel, downloadModel, getModelPath, isModelDownloaded,
+  deleteModel, downloadModel, getDownloadProgress, getModelPath, isModelDownloaded, subscribeToDownloads,
 } from '../../src';
 import { CUSTOM_MODELS } from '../fixtures/models';
 
@@ -41,19 +41,31 @@ describe('isModelDownloaded', () => {
   });
 });
 
+// Records every progress snapshot published while `run` executes
+const recordProgress = async (run: () => Promise<void>) => {
+  const snapshots: Record<string, number>[] = [];
+  const unsubscribe = subscribeToDownloads(() => snapshots.push(getDownloadProgress()));
+  try {
+    await run();
+  } finally {
+    unsubscribe();
+  }
+  return snapshots;
+};
+
 describe('downloadModel', () => {
   it('downloads to a partial file, reports progress and moves it into place', async () => {
     mockDownload(200);
-    const onProgress = jest.fn();
 
-    await downloadModel(MODEL, onProgress);
+    const snapshots = await recordProgress(() => downloadModel(MODEL));
 
     expect(mockFs.mkdir).toHaveBeenCalledWith('/documents/local-ai-models');
     expect(mockFs.downloadFile).toHaveBeenCalledWith(expect.objectContaining({
       fromUrl: MODEL.url,
       toFile: PARTIAL_PATH,
+      begin: expect.any(Function),
     }));
-    expect(onProgress).toHaveBeenCalledWith(0.5);
+    expect(snapshots).toEqual([{ 'custom-speech': 0 }, { 'custom-speech': 0.5 }, {}]);
     expect(mockFs.moveFile).toHaveBeenCalledWith(PARTIAL_PATH, MODEL_PATH);
   });
 
@@ -61,26 +73,56 @@ describe('downloadModel', () => {
     mockFs.exists.mockImplementation(async (path) => path === PARTIAL_PATH);
     mockDownload(200);
 
-    await downloadModel(MODEL, jest.fn());
+    await downloadModel(MODEL);
 
     expect(mockFs.unlink).toHaveBeenCalledWith(PARTIAL_PATH);
   });
 
   it('does not report progress when the size is unknown', async () => {
     mockDownload(200, 5, -1);
-    const onProgress = jest.fn();
 
-    await downloadModel(MODEL, onProgress);
+    const snapshots = await recordProgress(() => downloadModel(MODEL));
 
-    expect(onProgress).not.toHaveBeenCalled();
+    expect(snapshots).toEqual([{ 'custom-speech': 0 }, {}]);
+  });
+
+  it('joins a download already in progress instead of starting another', async () => {
+    let finishDownload: () => void = () => undefined;
+    mockFs.downloadFile.mockReturnValue({
+      jobId: 1,
+      promise: new Promise((resolve) => {
+        finishDownload = () => resolve({ jobId: 1, statusCode: 200, bytesWritten: 10 });
+      }),
+    });
+
+    const first = downloadModel(MODEL);
+    const second = downloadModel(MODEL);
+    await new Promise<void>((resolve) => { setTimeout(resolve, 0); });
+    finishDownload();
+    await Promise.all([first, second]);
+
+    expect(second).toBe(first);
+    expect(mockFs.downloadFile).toHaveBeenCalledTimes(1);
+    expect(getDownloadProgress()).toEqual({});
   });
 
   it('deletes the partial file and throws when the server does not return 200', async () => {
     mockDownload(404);
 
-    await expect(downloadModel(MODEL, jest.fn())).rejects.toThrow('custom-speech with status 404');
+    await expect(downloadModel(MODEL)).rejects.toThrow('custom-speech with status 404');
     expect(mockFs.unlink).toHaveBeenCalledWith(PARTIAL_PATH);
     expect(mockFs.moveFile).not.toHaveBeenCalled();
+    expect(getDownloadProgress()).toEqual({});
+  });
+
+  it('starts a new download after a failed one', async () => {
+    mockDownload(404);
+    await expect(downloadModel(MODEL)).rejects.toThrow();
+    mockDownload(200);
+
+    await downloadModel(MODEL);
+
+    expect(mockFs.downloadFile).toHaveBeenCalledTimes(2);
   });
 });
 

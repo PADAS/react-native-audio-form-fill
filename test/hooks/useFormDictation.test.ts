@@ -152,6 +152,15 @@ describe('useFormDictation', () => {
     expect(options.logger?.info).toHaveBeenCalledWith(expect.stringContaining('"usedMemoryMB":800'));
   });
 
+  it('adds dictated multi-choice options to those already selected', async () => {
+    mockExtraction({ threats: ['fire'], shots: 2 });
+    const { result, options } = renderDictation({ currentValues: { threats: ['snare'], shots: 1 } });
+
+    await recordAndStop(result);
+
+    expect(options.onFilled).toHaveBeenCalledWith({ threats: ['snare', 'fire'], shots: 2 });
+  });
+
   it('logs each status change', async () => {
     const { result, options } = renderDictation();
 

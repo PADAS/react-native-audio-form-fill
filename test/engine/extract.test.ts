@@ -52,19 +52,21 @@ describe('extractFormValues', () => {
       temperature: 0,
       n_predict: 512,
     });
-    expect(params.response_format.json_schema.schema.properties).toHaveProperty('shots');
+    expect(params.response_format.json_schema.schema.properties.fills.items.anyOf)
+      .toContainEqual(expect.objectContaining({ required: ['shots'], properties: { shots: { type: 'number' } } }));
+    expect(params.messages[1].content).toContain('- shots: "Number of shots" (number)');
     expect(params.messages[1].content).toContain('What the ranger said: "Two shots heard"');
   });
 
   it('returns checked values, rejections, the raw output and timings', async () => {
-    createLlamaContext({ content: '{"shots": 2, "species": "Lion"}', text: '' });
+    createLlamaContext({ content: '{"fills": [{"shots": 2}, {"species": "Lion"}]}', text: '' });
 
     const result = await extractFormValues(MODEL, fields, 'Two shots at a lion', {});
 
     expect(result).toMatchObject({
       values: { shots: 2 },
       rejected: [{ key: 'species', value: 'Lion', reason: 'unknownOption' }],
-      rawOutput: '{"shots": 2, "species": "Lion"}',
+      rawOutput: '{"fills": [{"shots": 2}, {"species": "Lion"}]}',
       promptTokens: 176,
       promptTokensPerSecond: 150,
       generatedTokens: 23,
@@ -73,15 +75,35 @@ describe('extractFormValues', () => {
   });
 
   it('turns a clear the ranger did not ask for into removing the options they named', async () => {
-    createLlamaContext({ content: '{"threats": null}', text: '' });
+    createLlamaContext({ content: '{"fills": [{"threats": null}]}', text: '' });
 
     const result = await extractFormValues(MODEL, fields, 'Move snare from threats.', { threats: ['snare', 'fire'] });
 
     expect(result.values).toEqual({ threats: { add: [], remove: ['snare'] } });
   });
 
+  it('fills every field the model listed, in whatever order it listed them', async () => {
+    createLlamaContext({
+      content: '{"fills": [{"species": "Rhino"}, {"shots": 3}, {"observations": "Fresh tracks"}]}',
+      text: '',
+    });
+
+    const result = await extractFormValues(MODEL, fields, 'A rhino, three shots, fresh tracks', {});
+
+    expect(result.values).toEqual({ species: 'rhino_uuid', shots: 3, observations: 'Fresh tracks' });
+  });
+
+  it('shows the model current values with choice titles', async () => {
+    const context = createLlamaContext({ content: '{"fills": []}', text: '' });
+
+    await extractFormValues(MODEL, fields, 'Nothing new', { shots: 4, species: 'rhino_uuid' });
+
+    const [params] = context.completion.mock.calls[0];
+    expect(params.messages[1].content).toContain('Current values: {"shots":4,"species":"Rhino"}');
+  });
+
   it('falls back to the full text when the chat parser returns no content', async () => {
-    createLlamaContext({ content: '', text: '<|im_start|>assistant\n{"shots": 3}' });
+    createLlamaContext({ content: '', text: '<|im_start|>assistant\n{"fills": [{"shots": 3}]}' });
 
     const result = await extractFormValues(MODEL, fields, 'Three shots', {});
 

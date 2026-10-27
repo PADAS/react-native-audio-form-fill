@@ -15,7 +15,7 @@ const mockFs = jest.mocked(RNFS);
 
 const BASE_SPEECH = getModelForType('speech', 'whisper-base-q5_1');
 const SMALL_SPEECH = getModelForType('speech', 'whisper-small-q5_1');
-const QWEN3 = getModelForType('language', 'qwen3-1.7b-q4_k_m');
+const QWEN25 = getModelForType('language', 'qwen2.5-1.5b-instruct-q4_k_m');
 
 const createLogger = (): jest.Mocked<DictationLogger> => ({
   debug: jest.fn(),
@@ -48,21 +48,21 @@ describe('useLocalModels', () => {
     const { result } = await renderLocalModels({ storage });
 
     expect(result.current.speechModel.id).toBe('whisper-base-q5_1');
-    expect(result.current.languageModel.id).toBe('qwen2.5-1.5b-instruct-q4_k_m');
+    expect(result.current.languageModel.id).toBe('qwen3-1.7b-q4_k_m');
     expect(result.current.shouldTranslateToEnglish).toBe(true);
   });
 
   it('reads saved settings under the keys er-mobile used before this package', async () => {
     const { storage } = createMemoryStorage({
       AudioFormFillSpeechModel: 'whisper-small-q5_1',
-      AudioFormFillLanguageModel: 'qwen3-1.7b-q4_k_m',
+      AudioFormFillLanguageModel: 'qwen2.5-1.5b-instruct-q4_k_m',
       AudioFormFillTranslate: false,
     });
 
     const { result } = await renderLocalModels({ storage });
 
     expect(result.current.speechModel).toBe(SMALL_SPEECH);
-    expect(result.current.languageModel).toBe(QWEN3);
+    expect(result.current.languageModel).toBe(QWEN25);
     expect(result.current.shouldTranslateToEnglish).toBe(false);
   });
 
@@ -72,15 +72,15 @@ describe('useLocalModels', () => {
 
     act(() => {
       result.current.onSelectModel(SMALL_SPEECH);
-      result.current.onSelectModel(QWEN3);
+      result.current.onSelectModel(QWEN25);
       result.current.setShouldTranslateToEnglish(false);
     });
 
     expect(storage.getString(AUDIO_FORM_FILL_STORAGE_KEYS.speechModel)).toBe('whisper-small-q5_1');
-    expect(storage.getString(AUDIO_FORM_FILL_STORAGE_KEYS.languageModel)).toBe('qwen3-1.7b-q4_k_m');
+    expect(storage.getString(AUDIO_FORM_FILL_STORAGE_KEYS.languageModel)).toBe('qwen2.5-1.5b-instruct-q4_k_m');
     expect(storage.getBoolean(AUDIO_FORM_FILL_STORAGE_KEYS.translateToEnglish)).toBe(false);
     expect(result.current.speechModel).toBe(SMALL_SPEECH);
-    expect(result.current.languageModel).toBe(QWEN3);
+    expect(result.current.languageModel).toBe(QWEN25);
     expect(result.current.shouldTranslateToEnglish).toBe(false);
   });
 
@@ -125,7 +125,7 @@ describe('useLocalModels', () => {
     await waitFor(() => expect(result.current.downloadedModelIds).toEqual(['whisper-base-q5_1']));
     expect(result.current.areModelsReady).toBe(false);
 
-    mockDownloadedFiles([BASE_SPEECH.fileName, 'qwen2.5-1.5b-instruct-q4_k_m.gguf']);
+    mockDownloadedFiles([BASE_SPEECH.fileName, 'Qwen3-1.7B-Q4_K_M.gguf']);
     await act(async () => { await result.current.refreshDownloadedModels(); });
 
     expect(result.current.areModelsReady).toBe(true);

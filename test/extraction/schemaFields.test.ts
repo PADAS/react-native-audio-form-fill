@@ -43,4 +43,29 @@ describe('getDictationFields', () => {
   it('returns nothing for a schema without properties', () => {
     expect(getDictationFields(undefined)).toEqual({ fields: [], skipped: [] });
   });
+
+  it('reads v2 option display names from x-enumExtra', () => {
+    const { fields } = getDictationFields({
+      properties: {
+        whatDetected: {
+          type: 'string',
+          title: 'What was detected',
+          anyOf: [{
+            type: 'string',
+            enum: ['campfire', 'torch', 'other'],
+            'x-enumExtra': {
+              campfire: { display: 'Camp Fire', description: 'whatDetected' },
+              torch: { display: 'Torch/Light', description: 'whatDetected' },
+            },
+          }],
+        },
+      },
+    });
+
+    expect(fields[0].options).toEqual([
+      { value: 'campfire', title: 'Camp Fire' },
+      { value: 'torch', title: 'Torch/Light' },
+      { value: 'other', title: 'other' },
+    ]);
+  });
 });

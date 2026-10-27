@@ -35,8 +35,27 @@ describe('buildExtractionMessages', () => {
     const { fields } = getDictationFields(DICTATION_V2_SCHEMA_MOCK);
     const [system] = buildExtractionMessages(fields, 'Clear the threats', {}, new Date());
 
-    expect(system.content).toContain('{"add": [...], "remove": [...]}');
-    expect(system.content).toContain('"remove snare from threats" -> {"threats": {"remove": ["Snare"]}}');
+    expect(system.content).toContain('the value is {"add": [...], "remove": [...]}');
+    expect(system.content).toContain('Reply {"fills": [...]}');
+    expect(system.content).toContain('For text fields, write only the words that answer that field.');
+    expect(system.content).not.toContain('listed order');
+    expect(system.content).toContain(
+      '"two shots, remove snare from threats" -> {"fills": [{"shots": 2}, {"threats": {"remove": ["Snare"]}}]}',
+    );
     expect(system.content).toContain('Reply null for a choice or multiChoice field only when the ranger asks to clear');
+  });
+
+  it('repeats the text rule after the transcript', () => {
+    const [shots] = getDictationFields(DICTATION_V2_SCHEMA_MOCK).fields.filter(({ key }) => key === 'shots');
+    const [, user] = buildExtractionMessages(
+      [shots],
+      'Two shots',
+      {},
+      new Date('2026-10-23T08:00:00.000Z'),
+    );
+
+    expect(user.content.trim().endsWith(
+      'Text answers are short phrases from what was said, never the whole transcript.',
+    )).toBe(true);
   });
 });

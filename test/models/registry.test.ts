@@ -5,7 +5,7 @@ describe('getModelsForType', () => {
   it('lists the built-in models of a type', () => {
     expect(getModelsForType('speech').map(({ id }) => id)).toEqual(['whisper-base-q5_1', 'whisper-small-q5_1']);
     expect(getModelsForType('language').map(({ id }) => id))
-      .toEqual(['qwen2.5-1.5b-instruct-q4_k_m', 'qwen3-1.7b-q4_k_m']);
+      .toEqual(['qwen3-1.7b-q4_k_m', 'qwen2.5-1.5b-instruct-q4_k_m']);
   });
 
   it('uses an app-provided model list when given one', () => {

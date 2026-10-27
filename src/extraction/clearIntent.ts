@@ -7,7 +7,7 @@ import { CoercedDictationValues, DictationField, MultiChoiceChange } from './typ
 // Transcripts are English when translation is on, which is the default
 const CLEAR_WORDS = ['clear', 'all', 'everything', 'none', 'nothing', 'reset', 'empty'];
 
-const normalize = (text: string): string => ` ${text.toLowerCase().replace(/[^a-z0-9À-ɏ]+/g, ' ').trim()} `;
+export const normalize = (text: string): string => ` ${text.toLowerCase().replace(/[^a-z0-9À-ɏ]+/g, ' ').trim()} `;
 
 const mentions = (transcript: string, title: string): boolean => transcript.includes(normalize(title));
 

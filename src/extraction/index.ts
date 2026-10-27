@@ -15,9 +15,10 @@ export type {
   SkippedDictationField,
 } from './types';
 export { getDictationFields, MAX_DICTATION_CHOICE_OPTIONS } from './schemaFields';
-export { buildExtractionSchema } from './outputSchema';
+export { buildExtractionSchema, MAX_DICTATED_TEXT_LENGTH } from './outputSchema';
 export { buildExtractionMessages } from './prompt';
 export { parseExtractionOutput } from './parseOutput';
 export { coerceExtractedValues } from './coerceValues';
 export { mergeDictatedValues } from './mergeValues';
 export { confirmClearedValues } from './clearIntent';
+export { rejectCopiedTranscript } from './copiedText';

@@ -2,47 +2,63 @@ import { DictationField } from './types';
 import { SchemaNode } from './schemaNode';
 import { getUniqueTitles } from './choiceOptions';
 
-// JSON Schema handed to llama.cpp, which compiles it to a grammar so the model can only emit known keys and
-// listed choice titles. Choice fields use titles rather than stored values because values may be opaque ids.
-// Choice fields also accept null, which clears them; multi-choice fields name the options to add and remove.
-export const buildExtractionSchema = (fields: DictationField[]): SchemaNode => {
-  const properties: Record<string, SchemaNode> = {};
+export const MAX_DICTATED_TEXT_LENGTH = 150;
+const MAX_TRANSCRIPT_SHARE = 0.6;
+const MIN_TEXT_LENGTH = 40;
 
-  fields.forEach((field) => {
-    switch (field.kind) {
-      case 'choice':
-        properties[field.key] = { enum: [...getUniqueTitles(field.options || []), null] };
-        break;
-      case 'multiChoice': {
-        const titles = { type: 'array', items: { type: 'string', enum: getUniqueTitles(field.options || []) } };
-        properties[field.key] = {
-          anyOf: [
-            {
-              type: 'object',
-              properties: { add: titles, remove: titles },
-              additionalProperties: false,
-            },
-            { type: 'null' },
-          ],
-        };
-        break;
-      }
-      case 'date':
-        properties[field.key] = { type: 'string', format: field.dateFormat || 'date-time' };
-        break;
-      case 'number':
-      case 'integer':
-      case 'boolean':
-        properties[field.key] = { type: field.kind };
-        break;
-      default:
-        properties[field.key] = { type: 'string' };
+const getTextLimit = (field: DictationField, transcript?: string): number => {
+  const transcriptLimit = transcript === undefined
+    ? MAX_DICTATED_TEXT_LENGTH
+    : Math.max(MIN_TEXT_LENGTH, Math.floor(transcript.trim().length * MAX_TRANSCRIPT_SHARE));
+  return Math.min(field.maxLength ?? MAX_DICTATED_TEXT_LENGTH, MAX_DICTATED_TEXT_LENGTH, transcriptLimit);
+};
+
+const buildValueSchema = (field: DictationField, transcript?: string): SchemaNode => {
+  switch (field.kind) {
+    case 'choice':
+      return { enum: [...getUniqueTitles(field.options || []), null] };
+    case 'multiChoice': {
+      const titles = { type: 'array', items: { type: 'string', enum: getUniqueTitles(field.options || []) } };
+      return {
+        anyOf: [
+          {
+            type: 'object',
+            properties: { add: titles, remove: titles },
+            additionalProperties: false,
+          },
+          { type: 'null' },
+        ],
+      };
     }
-  });
+    case 'date':
+      return { type: 'string', format: field.dateFormat || 'date-time' };
+    case 'number':
+    case 'integer':
+    case 'boolean':
+      return { type: field.kind };
+    default:
+      return { type: 'string', maxLength: getTextLimit(field, transcript) };
+  }
+};
+
+export const buildExtractionSchema = (fields: DictationField[], transcript?: string): SchemaNode => {
+  const fill = fields.length > 0
+    ? {
+      anyOf: fields.map((field) => ({
+        type: 'object',
+        properties: { [field.key]: buildValueSchema(field, transcript) },
+        required: [field.key],
+        additionalProperties: false,
+      })),
+    }
+    : {};
 
   return {
     type: 'object',
-    properties,
+    properties: {
+      fills: { type: 'array', items: fill, ...(fields.length > 0 ? {} : { maxItems: 0 }) },
+    },
+    required: ['fills'],
     additionalProperties: false,
   };
 };

@@ -50,12 +50,13 @@ export const buildExtractionMessages = (
       role: 'system',
       content: [
         'You fill in a wildlife ranger\'s field report form from what the ranger said out loud.',
-        'Reply with a single JSON object whose keys are field keys from the list.',
+        'Reply {"fills": [...]} with one {"<field key>": value} entry for each field the ranger mentioned.',
         'Only include fields the ranger clearly mentioned. Leave every other field out. Never guess.',
+        'For text fields, write only the words that answer that field. Never copy the whole transcript.',
         'For fields with options, use one of the listed options exactly.',
-        'For multiChoice fields, reply {"add": [...], "remove": [...]}: "add" lists options the ranger wants selected,'
-          + ' "remove" lists options they want unselected.',
-        'Example: "remove snare from threats" -> {"threats": {"remove": ["Snare"]}}',
+        'For multiChoice fields, the value is {"add": [...], "remove": [...]}: "add" lists options the ranger wants'
+          + ' selected, "remove" lists options they want unselected.',
+        'Example: "two shots, remove snare from threats" -> {"fills": [{"shots": 2}, {"threats": {"remove": ["Snare"]}}]}',
         'Reply null for a choice or multiChoice field only when the ranger asks to clear the whole field.',
         `The current local time is ${now.toISOString()}. Resolve relative times like "this morning" against it.`,
       ].join('\n'),
@@ -69,6 +70,8 @@ export const buildExtractionMessages = (
         `Current values: ${JSON.stringify(currentFieldValues)}`,
         '',
         `What the ranger said: "${transcript.trim()}"`,
+        '',
+        'Text answers are short phrases from what was said, never the whole transcript.',
       ].join('\n'),
     },
   ];

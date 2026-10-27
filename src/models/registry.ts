@@ -25,20 +25,20 @@ export const LOCAL_MODELS: LocalModel[] = [
     sizeMB: 190,
   },
   {
-    id: 'qwen2.5-1.5b-instruct-q4_k_m',
-    type: 'language',
-    name: 'Qwen2.5 1.5B Instruct',
-    fileName: 'qwen2.5-1.5b-instruct-q4_k_m.gguf',
-    url: `${HUGGING_FACE_BASE_URL}/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf`,
-    sizeMB: 1117,
-  },
-  {
     id: 'qwen3-1.7b-q4_k_m',
     type: 'language',
     name: 'Qwen3 1.7B',
     fileName: 'Qwen3-1.7B-Q4_K_M.gguf',
     url: `${HUGGING_FACE_BASE_URL}/unsloth/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q4_K_M.gguf`,
     sizeMB: 1107,
+  },
+  {
+    id: 'qwen2.5-1.5b-instruct-q4_k_m',
+    type: 'language',
+    name: 'Qwen2.5 1.5B Instruct',
+    fileName: 'qwen2.5-1.5b-instruct-q4_k_m.gguf',
+    url: `${HUGGING_FACE_BASE_URL}/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf`,
+    sizeMB: 1117,
   },
 ];
 

@@ -21,6 +21,12 @@ const getEnumTitle = (enumNames: unknown, index: number, fallback: string): stri
   return fallback;
 };
 
+// v2 `x-enumExtra` maps each value to its display name: { campfire: { display: 'Camp Fire' } }
+const getEnumExtraTitle = (enumExtra: unknown, value: string): string | undefined => {
+  const extra = isSchemaNode(enumExtra) ? enumExtra[value] : undefined;
+  return isSchemaNode(extra) ? getString(extra, 'display') : undefined;
+};
+
 export const getOptionsFromNode = (node: SchemaNode): DictationChoiceOption[] => {
   const options: DictationChoiceOption[] = [];
 
@@ -28,7 +34,8 @@ export const getOptionsFromNode = (node: SchemaNode): DictationChoiceOption[] =>
   if (Array.isArray(enumValues)) {
     enumValues.forEach((value, index) => {
       if (typeof value === 'string') {
-        options.push({ value, title: getEnumTitle(node.enumNames, index, value) });
+        const fallback = getEnumExtraTitle(node['x-enumExtra'], value) || value;
+        options.push({ value, title: getEnumTitle(node.enumNames, index, fallback) });
       }
     });
   }

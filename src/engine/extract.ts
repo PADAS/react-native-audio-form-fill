@@ -7,6 +7,7 @@ import {
   buildExtractionSchema,
   coerceExtractedValues,
   confirmClearedValues,
+  rejectCopiedTranscript,
   DictationField,
   parseExtractionOutput,
 } from '../extraction';
@@ -30,7 +31,7 @@ export const extractFormValues = async (
     messages: buildExtractionMessages(fields, transcript, currentValues, new Date()),
     response_format: {
       type: 'json_schema',
-      json_schema: { strict: true, schema: buildExtractionSchema(fields) },
+      json_schema: { strict: true, schema: buildExtractionSchema(fields, transcript) },
     },
     jinja: true,
     enable_thinking: false,
@@ -41,11 +42,10 @@ export const extractFormValues = async (
   const extractMs = Date.now() - startedAt;
 
   const rawOutput = result.content || result.text;
-  const coerced = confirmClearedValues(
+  const coerced = rejectCopiedTranscript(
     fields,
-    coerceExtractedValues(fields, parseExtractionOutput(rawOutput)),
+    confirmClearedValues(fields, coerceExtractedValues(fields, parseExtractionOutput(rawOutput)), transcript, currentValues),
     transcript,
-    currentValues,
   );
   const { timings } = result;
 

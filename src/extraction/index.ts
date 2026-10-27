@@ -18,3 +18,4 @@ export { buildExtractionSchema } from './outputSchema';
 export { buildExtractionMessages } from './prompt';
 export { parseExtractionOutput } from './parseOutput';
 export { coerceExtractedValues } from './coerceValues';
+export { mergeDictatedValues } from './mergeValues';

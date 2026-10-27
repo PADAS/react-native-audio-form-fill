@@ -7,7 +7,9 @@ import {
 } from 'react';
 import RNFS from 'react-native-fs';
 
-import { DictationField, getDictationFields, SkippedDictationField } from '../extraction';
+import {
+  DictationField, getDictationFields, mergeDictatedValues, SkippedDictationField,
+} from '../extraction';
 import { extractFormValues, transcribeAudio } from '../engine';
 import {
   hasRecordingPermission, startDictationRecording, stopDictationRecording, stopRecordingIfActive,
@@ -131,7 +133,7 @@ export const useFormDictation = ({
       })}`);
 
       if (Object.keys(extraction.values).length > 0) {
-        onFilled(extraction.values);
+        onFilled(mergeDictatedValues(fields, currentValuesRef.current, extraction.values));
       }
     } catch (error) {
       loggerRef.current.error('Dictation failed', error);

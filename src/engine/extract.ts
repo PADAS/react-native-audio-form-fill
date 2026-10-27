@@ -6,6 +6,7 @@ import {
   buildExtractionMessages,
   buildExtractionSchema,
   coerceExtractedValues,
+  confirmClearedValues,
   DictationField,
   parseExtractionOutput,
 } from '../extraction';
@@ -40,7 +41,12 @@ export const extractFormValues = async (
   const extractMs = Date.now() - startedAt;
 
   const rawOutput = result.content || result.text;
-  const coerced = coerceExtractedValues(fields, parseExtractionOutput(rawOutput));
+  const coerced = confirmClearedValues(
+    fields,
+    coerceExtractedValues(fields, parseExtractionOutput(rawOutput)),
+    transcript,
+    currentValues,
+  );
   const { timings } = result;
 
   return {

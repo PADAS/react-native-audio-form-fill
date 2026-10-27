@@ -10,6 +10,7 @@ export type {
   DictationFieldKind,
   DictationFieldsResult,
   ExtractionMessage,
+  MultiChoiceChange,
   RejectedDictationValue,
   SkippedDictationField,
 } from './types';
@@ -19,3 +20,4 @@ export { buildExtractionMessages } from './prompt';
 export { parseExtractionOutput } from './parseOutput';
 export { coerceExtractedValues } from './coerceValues';
 export { mergeDictatedValues } from './mergeValues';
+export { confirmClearedValues } from './clearIntent';

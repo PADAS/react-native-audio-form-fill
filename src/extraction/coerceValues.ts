@@ -2,10 +2,24 @@
  * Maps the model's output back to form values, enforcing each field's constraints
  */
 
-import { CoercedDictationValues, DictationField, RejectedDictationValue } from './types';
+import {
+  CoercedDictationValues, DictationField, MultiChoiceChange, RejectedDictationValue,
+} from './types';
 import { isSchemaNode } from './schemaNode';
 import { findOptionValue } from './choiceOptions';
 import { coerceDate } from './dates';
+
+const CLEARABLE_KINDS = ['choice', 'multiChoice'];
+
+const isEmptyList = (value: unknown): boolean => value === undefined || (Array.isArray(value) && value.length === 0);
+
+const toOptionValues = (field: DictationField, titles: unknown): string[] => {
+  if (!Array.isArray(titles)) return [];
+  const optionValues = titles
+    .map((title) => findOptionValue(field.options || [], title))
+    .filter((optionValue): optionValue is string => optionValue !== undefined);
+  return Array.from(new Set(optionValues));
+};
 
 const coerceFieldValue = (field: DictationField, value: unknown): { value?: unknown; reason?: string } => {
   switch (field.kind) {
@@ -35,11 +49,15 @@ const coerceFieldValue = (field: DictationField, value: unknown): { value?: unkn
       return optionValue ? { value: optionValue } : { reason: 'unknownOption' };
     }
     case 'multiChoice': {
-      if (!Array.isArray(value)) return { reason: 'notAList' };
-      const optionValues = value
-        .map((item) => findOptionValue(field.options || [], item))
-        .filter((item): item is string => item !== undefined);
-      return optionValues.length > 0 ? { value: Array.from(new Set(optionValues)) } : { reason: 'unknownOption' };
+      if (!isSchemaNode(value)) return { reason: 'notAChange' };
+      const add = toOptionValues(field, value.add);
+      const remove = toOptionValues(field, value.remove);
+      if (add.length > 0 || remove.length > 0) {
+        const change: MultiChoiceChange = { add, remove };
+        return { value: change };
+      }
+      const isEmptyChange = isEmptyList(value.add) && isEmptyList(value.remove);
+      return { reason: isEmptyChange ? 'empty' : 'unknownOption' };
     }
     default:
       return { reason: 'unsupportedType' };
@@ -60,6 +78,10 @@ export const coerceExtractedValues = (fields: DictationField[], extracted: unkno
     const field = fieldsByKey.get(key);
     if (!field) {
       rejected.push({ key, value: rawValue, reason: 'unknownField' });
+      return;
+    }
+    if (rawValue === null && CLEARABLE_KINDS.includes(field.kind)) {
+      values[key] = null;
       return;
     }
     if (rawValue === null || rawValue === undefined) {

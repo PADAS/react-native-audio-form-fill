@@ -36,6 +36,13 @@ export interface RejectedDictationValue {
   reason: string;
 }
 
+// Stored option values to select and unselect in a multi-choice field
+export interface MultiChoiceChange {
+  add: string[];
+  remove: string[];
+}
+
+// Choice and multi-choice fields are null when the ranger asked to clear them
 export interface CoercedDictationValues {
   values: Record<string, unknown>;
   rejected: RejectedDictationValue[];

@@ -67,7 +67,7 @@ const { values, rejected } = coerceExtractedValues(fields, parseExtractionOutput
 
 | Export | Purpose |
 |---|---|
-| `LOCAL_MODELS` | Built-in registry: Whisper base and small (speech), Qwen2.5 1.5B Instruct and Qwen3 1.7B (form filling), downloaded from Hugging Face. |
+| `LOCAL_MODELS` | Built-in registry: Whisper base and small (speech), Qwen3 1.7B (the default) and Qwen2.5 1.5B Instruct (form filling), downloaded from Hugging Face. |
 | `getModelsForType(type, models?)` | Models of type `'speech'` or `'language'`. Pass your own list to use different models. |
 | `getModelForType(type, id, models?)` | The model with a saved id, falling back to the first model of that type. |
 | `downloadModel(model, onProgress)` | Downloads to `<Documents>/local-ai-models`. Writes to a `.partial` file and only moves it into place after a 200 response, so an interrupted download never looks complete. |

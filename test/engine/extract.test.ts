@@ -72,6 +72,14 @@ describe('extractFormValues', () => {
     });
   });
 
+  it('turns a clear the ranger did not ask for into removing the options they named', async () => {
+    createLlamaContext({ content: '{"threats": null}', text: '' });
+
+    const result = await extractFormValues(MODEL, fields, 'Move snare from threats.', { threats: ['snare', 'fire'] });
+
+    expect(result.values).toEqual({ threats: { add: [], remove: ['snare'] } });
+  });
+
   it('falls back to the full text when the chat parser returns no content', async () => {
     createLlamaContext({ content: '', text: '<|im_start|>assistant\n{"shots": 3}' });
 

@@ -152,13 +152,15 @@ describe('useFormDictation', () => {
     expect(options.logger?.info).toHaveBeenCalledWith(expect.stringContaining('"usedMemoryMB":800'));
   });
 
-  it('adds dictated multi-choice options to those already selected', async () => {
-    mockExtraction({ threats: ['fire'], shots: 2 });
-    const { result, options } = renderDictation({ currentValues: { threats: ['snare'], shots: 1 } });
+  it('applies dictated changes to the current selections and clears fields the ranger cleared', async () => {
+    mockExtraction({ threats: { add: ['fire'], remove: ['snare'] }, species: null, shots: 2 });
+    const { result, options } = renderDictation({
+      currentValues: { threats: ['snare', 'gunshot'], species: 'rhino_uuid', shots: 1 },
+    });
 
     await recordAndStop(result);
 
-    expect(options.onFilled).toHaveBeenCalledWith({ threats: ['snare', 'fire'], shots: 2 });
+    expect(options.onFilled).toHaveBeenCalledWith({ threats: ['gunshot', 'fire'], species: undefined, shots: 2 });
   });
 
   it('logs each status change', async () => {

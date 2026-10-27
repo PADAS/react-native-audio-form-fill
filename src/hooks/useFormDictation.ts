@@ -10,7 +10,7 @@ import RNFS from 'react-native-fs';
 import {
   DictationField, getDictationFields, mergeDictatedValues, SkippedDictationField,
 } from '../extraction';
-import { extractFormValues, transcribeAudio } from '../engine';
+import { extractFormValues, preloadDictationModels, transcribeAudio } from '../engine';
 import {
   hasRecordingPermission, startDictationRecording, stopDictationRecording, stopRecordingIfActive,
 } from '../recording/recorder';
@@ -75,7 +75,11 @@ export const useFormDictation = ({
 
     recordingStartedAt.current = Date.now();
     updateStatus('recording');
-  }, [updateStatus]);
+
+    preloadDictationModels(speechModel, languageModel).catch((error) => {
+      loggerRef.current.warn(`Model preload failed: ${error instanceof Error ? error.message : String(error)}`);
+    });
+  }, [languageModel, speechModel, updateStatus]);
 
   const stopRecordingAndFill = useCallback(async () => {
     const recording = await stopDictationRecording();

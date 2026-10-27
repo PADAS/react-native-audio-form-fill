@@ -3,11 +3,19 @@
  */
 
 import {
-  useCallback, useEffect, useRef, useState,
+  useCallback, useEffect, useRef, useState, useSyncExternalStore,
 } from 'react';
 
 import {
-  downloadModel, getModelForType, getModelsForType, isModelDownloaded, LOCAL_MODELS, LocalModel,
+  deleteModel,
+  downloadModel,
+  getDownloadProgress,
+  getModelForType,
+  getModelsForType,
+  isModelDownloaded,
+  LOCAL_MODELS,
+  LocalModel,
+  subscribeToDownloads,
 } from '../models';
 import { AUDIO_FORM_FILL_STORAGE_KEYS, useStoredBoolean, useStoredString } from './storage';
 import { UseLocalModelsOptions } from './types';
@@ -24,8 +32,8 @@ export const useLocalModels = ({ storage, models = LOCAL_MODELS, logger = NOOP_L
 
   // Component's State
   const [downloadedModelIds, setDownloadedModelIds] = useState<string[]>([]);
-  const [downloadProgress, setDownloadProgress] = useState<Record<string, number>>({});
   const [downloadError, setDownloadError] = useState<string>();
+  const downloadProgress = useSyncExternalStore(subscribeToDownloads, getDownloadProgress);
 
   // References
   // Read through a ref so an inline logger object doesn't re-create callbacks every render
@@ -39,6 +47,7 @@ export const useLocalModels = ({ storage, models = LOCAL_MODELS, logger = NOOP_L
     && downloadedModelIds.includes(languageModel.id);
   // Translating to English is on by default because form options are written in English
   const shouldTranslateToEnglish = translatePreference ?? true;
+  const activeDownloadIds = Object.keys(downloadProgress).join();
 
   // Call when returning to a screen (e.g. from useFocusEffect) to pick up downloads made elsewhere
   const refreshDownloadedModels = useCallback(async () => {
@@ -50,26 +59,28 @@ export const useLocalModels = ({ storage, models = LOCAL_MODELS, logger = NOOP_L
 
   useEffect(() => {
     refreshDownloadedModels();
-  }, [refreshDownloadedModels]);
+  }, [refreshDownloadedModels, activeDownloadIds]);
 
   const onDownloadModel = useCallback(async (model: LocalModel) => {
     try {
       setDownloadError(undefined);
-      setDownloadProgress((progress) => ({ ...progress, [model.id]: 0 }));
-      await downloadModel(model, (fraction) => {
-        setDownloadProgress((progress) => ({ ...progress, [model.id]: fraction }));
-      });
+      await downloadModel(model);
       loggerRef.current.info(`Downloaded ${model.id}`);
       await refreshDownloadedModels();
     } catch (error) {
       loggerRef.current.error('Model download failed', error);
       setDownloadError(error instanceof Error ? error.message : String(error));
+    }
+  }, [refreshDownloadedModels]);
+
+  const onDeleteModel = useCallback(async (model: LocalModel) => {
+    try {
+      await deleteModel(model);
+      loggerRef.current.info(`Deleted ${model.id}`);
+    } catch (error) {
+      loggerRef.current.error('Model delete failed', error);
     } finally {
-      setDownloadProgress((progress) => {
-        const remaining = { ...progress };
-        delete remaining[model.id];
-        return remaining;
-      });
+      await refreshDownloadedModels();
     }
   }, [refreshDownloadedModels]);
 
@@ -97,6 +108,7 @@ export const useLocalModels = ({ storage, models = LOCAL_MODELS, logger = NOOP_L
     shouldTranslateToEnglish,
     setShouldTranslateToEnglish,
     onDownloadModel,
+    onDeleteModel,
     onSelectModel,
     refreshDownloadedModels,
   };

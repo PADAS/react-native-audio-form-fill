@@ -6,7 +6,8 @@ import { act, renderHook } from '@testing-library/react';
 import RNFS from 'react-native-fs';
 
 import {
-  DictationLogger, extractFormValues, getModelForType, transcribeAudio, useFormDictation, UseFormDictationOptions,
+  DictationLogger, extractFormValues, getModelForType, preloadDictationModels, transcribeAudio, useFormDictation,
+  UseFormDictationOptions,
 } from '../../src';
 import { AudioManager, mockRecorder } from '../mocks/reactNativeAudioApi';
 import { DICTATION_V2_SCHEMA_MOCK } from '../fixtures/schemas';
@@ -14,6 +15,7 @@ import { DICTATION_V2_SCHEMA_MOCK } from '../fixtures/schemas';
 jest.mock('../../src/engine', () => ({
   transcribeAudio: jest.fn(),
   extractFormValues: jest.fn(),
+  preloadDictationModels: jest.fn(),
 }));
 
 const SPEECH_MODEL = getModelForType('speech', undefined);
@@ -22,6 +24,7 @@ const AUDIO_PATH = '/cache/dictation-1.wav';
 
 const mockTranscribeAudio = jest.mocked(transcribeAudio);
 const mockExtractFormValues = jest.mocked(extractFormValues);
+const mockPreloadDictationModels = jest.mocked(preloadDictationModels);
 
 const createLogger = (): jest.Mocked<DictationLogger> => ({
   debug: jest.fn(),
@@ -71,6 +74,7 @@ beforeEach(() => {
     status: 'success', paths: [AUDIO_PATH], size: 0.2, duration: 6,
   });
   jest.mocked(RNFS.unlink).mockResolvedValue(undefined);
+  mockPreloadDictationModels.mockResolvedValue(undefined);
   mockTranscribeAudio.mockResolvedValue({
     transcript: 'Two shots heard', language: 'en', loadMs: 0, transcribeMs: 800,
   });
@@ -122,6 +126,24 @@ describe('useFormDictation', () => {
     expect(AudioManager.setAudioSessionActivity).toHaveBeenCalledWith(true);
   });
 
+  it('starts loading the models when recording starts', async () => {
+    const { result } = renderDictation();
+
+    await act(async () => { await result.current.toggleRecording(); });
+
+    expect(mockPreloadDictationModels).toHaveBeenCalledWith(SPEECH_MODEL, LANGUAGE_MODEL);
+  });
+
+  it('logs a failed preload and keeps recording', async () => {
+    mockPreloadDictationModels.mockRejectedValue(new Error('out of memory'));
+    const { result, options } = renderDictation();
+
+    await act(async () => { await result.current.toggleRecording(); });
+
+    expect(result.current.status).toBe('recording');
+    expect(options.logger?.warn).toHaveBeenCalledWith('Model preload failed: out of memory');
+  });
+
   it('does not record without microphone permission', async () => {
     AudioManager.checkRecordingPermissions.mockResolvedValue('Denied');
     AudioManager.requestRecordingPermissions.mockResolvedValue('Denied');
@@ -131,6 +153,7 @@ describe('useFormDictation', () => {
 
     expect(result.current.status).toBe('idle');
     expect(mockRecorder.start).not.toHaveBeenCalled();
+    expect(mockPreloadDictationModels).not.toHaveBeenCalled();
     expect(options.logger?.warn).toHaveBeenCalledWith('Microphone permission was not granted');
   });
 

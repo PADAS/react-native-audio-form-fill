@@ -186,6 +186,37 @@ describe('useFormDictation', () => {
     expect(options.onFilled).toHaveBeenCalledWith({ threats: ['gunshot', 'fire'], species: undefined, shots: 2 });
   });
 
+  it('logs the raw extraction output on one line', async () => {
+    mockExtractFormValues.mockResolvedValueOnce({
+      values: { shots: 2 },
+      rejected: [],
+      rawOutput: '<|im_start|>assistant\n{"fills": [{"shots": 2}]}',
+      loadMs: 0,
+      extractMs: 2500,
+      promptTokens: 176,
+      promptTokensPerSecond: 150,
+      generatedTokens: 23,
+      generatedTokensPerSecond: 10,
+    });
+    const { result, options } = renderDictation();
+
+    await recordAndStop(result);
+
+    expect(options.logger?.debug).toHaveBeenCalledWith(
+      'Extraction output: "<|im_start|>assistant\\n{\\"fills\\": [{\\"shots\\": 2}]}"',
+    );
+  });
+
+  it('logs filled choices with their titles next to the stored values', async () => {
+    mockExtraction({ threats: { add: ['fire'], remove: ['snare'] }, species: 'rhino_uuid', shots: 2 });
+    const { result, options } = renderDictation();
+
+    await recordAndStop(result);
+
+    expect(options.logger?.info).toHaveBeenCalledWith('Filled fields: {"threats":{"add":["Fire (fire)"],'
+      + '"remove":["Snare (snare)"]},"species":"Rhino (rhino_uuid)","shots":2}');
+  });
+
   it('logs each status change', async () => {
     const { result, options } = renderDictation();
 

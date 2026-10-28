@@ -1,5 +1,5 @@
 import { initWhisper, WhisperContext } from 'whisper.rn';
-import { initLlama, LlamaContext } from 'llama.rn';
+import { initLlama, LlamaContext, releaseAllLlama } from 'llama.rn';
 
 import {
   extractFormValues,
@@ -79,6 +79,54 @@ describe('preloadDictationModels', () => {
 
     expect(result.transcript).toBe('Two shots');
     expect(mockInitWhisper).toHaveBeenCalledTimes(2);
+  });
+
+  it('names the model that failed to load', async () => {
+    mockInitWhisper.mockResolvedValueOnce(createWhisperContext() as unknown as WhisperContext);
+    mockInitLlama.mockRejectedValueOnce(new Error('Unknown error'));
+
+    await expect(preloadDictationModels(SPEECH_MODEL, LANGUAGE_MODEL)).rejects.toThrow(
+      `Failed to load language model ${LANGUAGE_MODEL.id}: Unknown error`,
+    );
+  });
+
+  it('releases native llama contexts left behind by a failed load', async () => {
+    mockInitWhisper.mockResolvedValueOnce(createWhisperContext() as unknown as WhisperContext);
+    mockInitLlama.mockRejectedValueOnce(new Error('Unknown error'));
+
+    await expect(preloadDictationModels(SPEECH_MODEL, LANGUAGE_MODEL)).rejects.toThrow();
+
+    expect(releaseAllLlama).toHaveBeenCalledTimes(1);
+  });
+
+  it('skips preloading a model that already failed, but still loads it for a dictation', async () => {
+    mockInitWhisper.mockResolvedValueOnce(createWhisperContext() as unknown as WhisperContext);
+    mockInitLlama.mockRejectedValueOnce(new Error('Unknown error'));
+    await expect(preloadDictationModels(SPEECH_MODEL, LANGUAGE_MODEL)).rejects.toThrow();
+
+    await preloadDictationModels(SPEECH_MODEL, LANGUAGE_MODEL);
+    expect(mockInitLlama).toHaveBeenCalledTimes(1);
+
+    mockInitLlama.mockResolvedValueOnce(createLlamaContext() as unknown as LlamaContext);
+    const extraction = await extractFormValues(LANGUAGE_MODEL, fields, 'Two shots', {});
+
+    expect(extraction.values).toEqual({ shots: 2 });
+    expect(mockInitLlama).toHaveBeenCalledTimes(2);
+  });
+
+  it('preloads a model again once it has loaded successfully', async () => {
+    mockInitWhisper.mockResolvedValueOnce(createWhisperContext() as unknown as WhisperContext);
+    mockInitLlama.mockRejectedValueOnce(new Error('Unknown error'));
+    await expect(preloadDictationModels(SPEECH_MODEL, LANGUAGE_MODEL)).rejects.toThrow();
+    mockInitLlama.mockResolvedValueOnce(createLlamaContext() as unknown as LlamaContext);
+    await extractFormValues(LANGUAGE_MODEL, fields, 'Two shots', {});
+
+    await releaseDictationModels();
+    mockInitWhisper.mockResolvedValueOnce(createWhisperContext() as unknown as WhisperContext);
+    mockInitLlama.mockResolvedValueOnce(createLlamaContext() as unknown as LlamaContext);
+    await preloadDictationModels(SPEECH_MODEL, LANGUAGE_MODEL);
+
+    expect(mockInitLlama).toHaveBeenCalledTimes(3);
   });
 
   it('releases a model loaded by a preload', async () => {

@@ -3,3 +3,4 @@
  */
 
 export const initLlama = jest.fn();
+export const releaseAllLlama = jest.fn().mockResolvedValue(undefined);

@@ -3,7 +3,7 @@
  */
 
 import { initWhisper, WhisperContext } from 'whisper.rn';
-import { initLlama, LlamaContext } from 'llama.rn';
+import { initLlama, LlamaContext, releaseAllLlama } from 'llama.rn';
 
 import { getModelPath, LocalModel } from '../models';
 
@@ -23,6 +23,7 @@ interface LoadedContext<T> {
 
 let speechContext: LoadedContext<WhisperContext> | undefined;
 let languageContext: LoadedContext<LlamaContext> | undefined;
+const failedModelIds = new Set<string>();
 
 const releaseContext = async (loaded?: LoadedContext<Releasable>) => {
   const context = await loaded?.promise.catch(() => undefined);
@@ -43,13 +44,29 @@ const loadContext = <T extends Releasable>(
   };
 };
 
-const waitForContext = async <T>(loaded: LoadedContext<T>, clear: () => void) => {
+const waitForContext = async <T>(loaded: LoadedContext<T>, model: LocalModel, clear: () => void) => {
   const startedAt = Date.now();
   try {
     const context = await loaded.promise;
+    failedModelIds.delete(model.id);
     return { context, loadMs: Date.now() - startedAt };
   } catch (error) {
     clear();
+    failedModelIds.add(model.id);
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to load ${model.type} model ${model.id}: ${message}`);
+  }
+};
+
+const initLanguageModel = async (model: LocalModel) => {
+  try {
+    return await initLlama({
+      model: getModelPath(model),
+      n_ctx: LANGUAGE_MODEL_CONTEXT_SIZE,
+      n_gpu_layers: ALL_GPU_LAYERS,
+    });
+  } catch (error) {
+    await releaseAllLlama().catch(() => undefined);
     throw error;
   }
 };
@@ -57,30 +74,30 @@ const waitForContext = async <T>(loaded: LoadedContext<T>, clear: () => void) =>
 export const getSpeechContext = (model: LocalModel): Promise<{ context: WhisperContext; loadMs: number }> => {
   const loaded = loadContext(speechContext, model, () => initWhisper({ filePath: getModelPath(model) }));
   speechContext = loaded;
-  return waitForContext(loaded, () => {
+  return waitForContext(loaded, model, () => {
     if (speechContext === loaded) speechContext = undefined;
   });
 };
 
 export const getLanguageContext = (model: LocalModel): Promise<{ context: LlamaContext; loadMs: number }> => {
-  const loaded = loadContext(languageContext, model, () => initLlama({
-    model: getModelPath(model),
-    n_ctx: LANGUAGE_MODEL_CONTEXT_SIZE,
-    n_gpu_layers: ALL_GPU_LAYERS,
-  }));
+  const loaded = loadContext(languageContext, model, () => initLanguageModel(model));
   languageContext = loaded;
-  return waitForContext(loaded, () => {
+  return waitForContext(loaded, model, () => {
     if (languageContext === loaded) languageContext = undefined;
   });
 };
 
 export const preloadDictationModels = async (speechModel: LocalModel, languageModel: LocalModel): Promise<void> => {
-  await Promise.all([getSpeechContext(speechModel), getLanguageContext(languageModel)]);
+  await Promise.all([
+    failedModelIds.has(speechModel.id) ? undefined : getSpeechContext(speechModel),
+    failedModelIds.has(languageModel.id) ? undefined : getLanguageContext(languageModel),
+  ]);
 };
 
 export const releaseDictationModels = async (): Promise<void> => {
   const loaded = [speechContext, languageContext];
   speechContext = undefined;
   languageContext = undefined;
+  failedModelIds.clear();
   await Promise.all(loaded.map(releaseContext));
 };

@@ -20,6 +20,25 @@ import { NOOP_LOGGER } from './logger';
 // Constants
 const BYTES_PER_MB = 1024 * 1024;
 
+const describeFilledValues = (fields: DictationField[], values: Record<string, unknown>) => {
+  const fieldsByKey = new Map(fields.map((field) => [field.key, field]));
+
+  return Object.fromEntries(Object.entries(values).map(([key, value]) => {
+    const options = fieldsByKey.get(key)?.options;
+    const describe = (item: unknown) => {
+      const title = options?.find((option) => option.value === item)?.title;
+      return title !== undefined && title !== item ? `${title} (${String(item)})` : item;
+    };
+
+    if (!options || value === null || value === undefined) return [key, value];
+    if (typeof value === 'object' && 'add' in value && 'remove' in value) {
+      const { add, remove } = value as { add: unknown[]; remove: unknown[] };
+      return [key, { add: add.map(describe), remove: remove.map(describe) }];
+    }
+    return [key, describe(value)];
+  }));
+};
+
 export const useFormDictation = ({
   jsonSchema,
   currentValues,
@@ -111,9 +130,9 @@ export const useFormDictation = ({
         transcription.transcript,
         currentValuesRef.current,
       );
-      loggerRef.current.debug(`Extraction output: ${extraction.rawOutput}`);
+      loggerRef.current.debug(`Extraction output: ${JSON.stringify(extraction.rawOutput)}`);
 
-      loggerRef.current.info(`Filled fields: ${JSON.stringify(extraction.values)}`);
+      loggerRef.current.info(`Filled fields: ${JSON.stringify(describeFilledValues(fields, extraction.values))}`);
       if (extraction.rejected.length > 0) {
         loggerRef.current.warn(`Rejected values: ${JSON.stringify(extraction.rejected)}`);
       }

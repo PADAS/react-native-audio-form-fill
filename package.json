@@ -1,14 +1,13 @@
 {
   "name": "@earthranger/react-native-audio-form-fill",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "description": "Offline, on-device dictation that fills JSON Schema forms using Whisper and llama.cpp",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "react-native": "./src/index.ts",
   "source": "./src/index.ts",
   "scripts": {
-    "preinstall": "git config core.hooksPath .githooks",
-    "prepare": "npm run build",
+    "prepare": "(git rev-parse --is-inside-work-tree >/dev/null 2>&1 && git config core.hooksPath .githooks) || true; npm run build",
     "build": "npm run clean && tsc -p tsconfig.build.json",
     "clean": "rm -rf dist",
     "lint": "eslint src/ test/ --ext .js,.jsx,.ts,.tsx",
